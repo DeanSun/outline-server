@@ -14,11 +14,18 @@ To install and run Shadowbox on your own server, run
 sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/server_manager/install_scripts/install_server.sh)"
 ```
 
+You can specify flags to customize the installation. For example, to use hostname `myserver.com` and the port 443 for access keys, you can run:
+```
+sudo bash -c "$(wget -qO- https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/server_manager/install_scripts/install_server.sh)" install_server.sh --hostname=myserver.com --keys-port=443
+```
+
 Use `sudo --preserve-env` if you need to pass environment variables. Use `bash -x` if you need to debug the installation.
 
 ## Running from source code
 
 ### Prerequisites
+
+Shadowbox supports running on linux and macOS hosts.
 
 Besides [Node](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/en/docs/install), you will also need:
 
@@ -27,8 +34,6 @@ Besides [Node](https://nodejs.org/en/download/) and [Yarn](https://yarnpkg.com/e
 
 ### Running Shadowbox as a Node.js app
 
-> **NOTE:**: This is currently broken. Use the docker option instead.
-
 Build and run the server as a Node.js app:
 ```
 yarn do shadowbox/server/run
@@ -36,10 +41,6 @@ yarn do shadowbox/server/run
 The output will be at `build/shadowbox/app`.
 
 ### Running Shadowbox as a Docker container
-
-> **NOTE**: This does not currently work in Docker on Mac due to use of
-`--host=net` and integrity checks failing. For now, please see the Manual
-testing section below.
 
 ### With docker command
 
@@ -78,10 +79,10 @@ docker rmi $(docker images -f dangling=true -q)
 
 In order to utilize the Management API, you'll need to know the apiUrl for your Outline server.
 You can obtain this information from the "Settings" tab of the server page in the Outline Manager.
-Alternatively, you can check the 'access.txt' file under the '/opt/outline' directory of an Outline server. An example apiUrl is: https://1.2.3.4:1234/3pQ4jf6qSr5WVeMO0XOo4z. 
+Alternatively, you can check the 'access.txt' file under the '/opt/outline' directory of an Outline server. An example apiUrl is: https://1.2.3.4:1234/3pQ4jf6qSr5WVeMO0XOo4z.
 
-See [Full API Documentation](https://rebilly.github.io/ReDoc/?url=https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/shadowbox/server/api.yml).
-The OpenAPI specification can be found at [api.yml](./api.yml).
+See [Full API Documentation](https://redocly.github.io/redoc/?url=https://raw.githubusercontent.com/Jigsaw-Code/outline-server/master/src/shadowbox/server/api.yml).
+The OpenAPI specification can be found at [api.yml](./server/api.yml).
 
 ### Examples
 
@@ -114,6 +115,17 @@ Remove an access key
 curl --insecure -X DELETE $API_URL/access-keys/2
 ```
 
+Set a data limit for all access keys
+(e.g. limit outbound data transfer access keys to 1MB over 30 days)
+```
+curl -v --insecure -X PUT -H "Content-Type: application/json" -d '{"limit": {"bytes": 1000}}' $API_URL/experimental/access-key-data-limit
+```
+
+Remove the access key data limit
+```
+curl -v --insecure -X DELETE $API_URL/experimental/access-key-data-limit
+```
+
 ## Testing
 
 ### Manual
@@ -144,12 +156,23 @@ client <-> shadowbox <-> target
 To test clients that rely on fetching a docker image from Dockerhub, you can push an image to your account and modify the
 client to use your image. To push your own image:
 ```
-yarn shadowbox_docker_build && docker tag quay.io/outline/shadowbox $USER/shadowbox && docker push $USER/shadowbox
+yarn do shadowbox/docker/build && docker tag quay.io/outline/shadowbox $USER/shadowbox && docker push $USER/shadowbox
 ```
 
 If you need to test an unsigned image (e.g. your dev one):
 ```
-DOCKER_CONTENT_TRUST=0 SHADOWBOX_IMAGE=$USER/shadowbox yarn do shadowbox/integration_test/run
+DOCKER_CONTENT_TRUST=0 SB_IMAGE=$USER/shadowbox yarn do shadowbox/integration_test/run
 ```
 
 You can add tags if you need different versions in different clients.
+
+### Testing Changes to the Server Config
+
+If your change includes new fields in the server config which are needed at server
+start-up time, then you mey need to remove the pre-existing test config:
+
+```
+rm /tmp/outline/persisted-state/shadowbox_server_config.json
+```
+
+This will warn about deleting a write-protected file, which is okay to ignore.  You will then need to hand-edit the JSON string in src/shadowbox/docker/run_action.sh.

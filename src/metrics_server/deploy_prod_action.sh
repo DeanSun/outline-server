@@ -14,10 +14,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-yarn do metrics_server/build
+readonly SRC_DIR="src/metrics_server"
+readonly BUILD_DIR="build/metrics_server"
 
-cp src/metrics_server/config_prod.json build/metrics_server/config.json
+rm -rf "${BUILD_DIR}"
 
-cp src/metrics_server/package.json build/metrics_server/
+yarn 'do' metrics_server/build
 
-gcloud --project=uproxysite functions deploy reportHourlyConnectionMetrics --trigger-http --source=build/metrics_server --entry-point=reportHourlyConnectionMetrics
+cp "${SRC_DIR}/app_prod.yaml" "${BUILD_DIR}/app.yaml"
+cp "${SRC_DIR}/config_prod.json" "${BUILD_DIR}/config.json"
+cp "${SRC_DIR}/package.json" "${BUILD_DIR}/"
+
+gcloud app deploy "${SRC_DIR}/dispatch.yaml" "${BUILD_DIR}" --project uproxysite --verbosity info --no-promote --no-stop-previous-version

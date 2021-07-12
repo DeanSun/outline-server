@@ -19,17 +19,18 @@ import {ShadowboxServer} from './shadowbox_server';
 
 class ManualServer extends ShadowboxServer implements server.ManualServer {
   constructor(
-      private manualServerConfig: server.ManualServerConfig, private forgetCallback: Function) {
-    super();
+      id: string, private manualServerConfig: server.ManualServerConfig,
+      private forgetCallback: Function) {
+    super(id);
     this.setManagementApiUrl(manualServerConfig.apiUrl);
     // manualServerConfig.certSha256 is expected to be in hex format (install script).
     // Electron requires that this be decoded from hex (to unprintable binary),
     // then encoded as base64.
     try {
-      whitelistCertificate(btoa(hexToString(manualServerConfig.certSha256)));
+      trustCertificate(btoa(hexToString(manualServerConfig.certSha256)));
     } catch (e) {
-      // Error whitelisting certificate, may be due to bad user input.
-      console.error('Error whitelisting certificate');
+      // Error trusting certificate, may be due to bad user input.
+      console.error('Error trusting certificate');
     }
   }
 
@@ -92,7 +93,7 @@ export class ManualServerRepository implements server.ManualServerRepository {
   }
 
   private createServer(config: server.ManualServerConfig) {
-    const server = new ManualServer(config, () => {
+    const server = new ManualServer(`manual:${config.apiUrl}`, config, () => {
       this.forgetServer(server);
     });
     return server;
